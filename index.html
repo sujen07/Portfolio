@@ -25,7 +25,7 @@
                 <p>Using the ESRGAN paper, I followed the architecture in PyTorch to train a GAN model 
                     with a Generator and Discriminator training off of each other. I have python scripts 
                     to convert the torch model to onnx and locally host it as an API.</p>
-                <a href="github.com/sujen07/image-super_resolution">Full Project</a>
+                <a href="https://github.com/sujen07/image-super-resolution">Full Project</a>
             </div>
         </div>
         <div class="box">
@@ -35,52 +35,39 @@
             <div class="description">
                 <p>Using the minimax and depth limited minimax, I created an AI chess and Tic Tac Toe player. 
                     I used pygame to create the ui for the chess game, and it runs locally only.</p>
-                <a href="github.com/sujen07/">Full Project</a>
+                <a href="https://github.com/sujen07/minimax-ai-player">Full Project</a>
             </div>
         </div>
         <div class="box">
-            <h2>Proj 1</h2>
-            <h3>Something</h3>
-            <img src="1.png" alt="test">
+            <h2>GPT Loss Analysis</h2>
+            <h3>NLP (Transformers)</h3>
+            <img src="generative_ai_101.jpg" alt="Generative AI Picture" width="350px" height="250px">
             <div class="description">
-                <p>desc</p>
-                <a href="github.com/sujen07">Test Link</a>
+                <p>Conducted research on various different loss functions to train the GPT-2 model. 
+                    We used perplexity as a metric to evaluate performance of the language model after training it on squared loss, a hybrid loss function, etc.
+                We used pytorch to train the open source code for GPT-2 on the TinyStories dataset.</p>
+                <a href="https://github.com/sujen07/NanoGPT-Loss-stop-Analysis">Full Project</a>
             </div>
         </div>
         <div class="box">
-            <h2>Proj 1</h2>
-            <h3>Something</h3>
-            <img src="1.png" alt="test">
+            <h2>Panoramic Image Stitching</h2>
+            <h3>Computer Vision (Homography Matrix, Corner Detection)</h3>
+            <img src="matches.png" alt="Corner Matching between to images" height="400px" width="700px">
             <div class="description">
-                <p>desc</p>
-                <a href="github.com/sujen07">Test Link</a>
+                <p>Used eigenvectors of gradients in image to find corners in two images. Then matched the corners using SIFT. using the matched corners, 
+                    with 8-point algorithm and RANSAC. the Fundamental matrix is created that allows one image to be transformed into the camera projection of the other image, 
+                    which creates a panoramic stitching between the two.</p>
+                <a href="https://github.com/sujen07/panoramic">Full Project</a>
             </div>
         </div>
         <div class="box">
-            <h2>Proj 1</h2>
-            <h3>Something</h3>
-            <img src="1.png" alt="test">
+            <h2>Handrwitten Digit Detection</h2>
+            <h3>Computer Vision (CNN)</h3>
+            <img src="handwritten.png" alt="Sample Prediction from Mnist Model" height="400px" width="600px">
             <div class="description">
-                <p>desc</p>
-                <a href="github.com/sujen07">Test Link</a>
-            </div>
-        </div>
-        <div class="box">
-            <h2>Proj 1</h2>
-            <h3>Something</h3>
-            <img src="1.png" alt="test">
-            <div class="description">
-                <p>desc</p>
-                <a href="github.com/sujen07">Test Link</a>
-            </div>
-        </div>
-        <div class="box">
-            <h2>Proj 1</h2>
-            <h3>Something</h3>
-            <img src="1.png" alt="test">
-            <div class="description">
-                <p>desc</p>
-                <a href="github.com/sujen07">Test Link</a>
+                <p>Trained a simple handwritten digit detection model using pytorch with a basic CNN architecture, 
+                    and then converted it to onnx to run on the browser on device in javascript.</p>
+                <a href="https://github.com/sujen07/mnist-prediction">Full Project</a>
             </div>
         </div>
     </div>
