@@ -21,6 +21,12 @@ body {
     border: 2px solid #333; 
 }
 
+button {
+    display: block;
+    margin: 0 auto;
+    margin-top: 10px;
+}
+
 
 h1 {
     border-bottom: 2px solid #222222;
@@ -39,4 +45,25 @@ h1 {
     background-color: #fff;
     padding: 20px;
     border-radius: 25px;
+}
+
+h2 {
+    margin: 0;
+}
+
+h3 {
+    margin: 0;
+}
+
+.experience {
+    margin-bottom: 24px;
+}
+
+#resume-download {
+    background-color: #004d00; 
+    color: white; 
+    padding: 10px 20px;  
+    text-decoration: none; 
+    border-radius: 5px; 
+    cursor: pointer;
 }
