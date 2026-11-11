@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles.css">
+    <title>Chess RL | Sujen Kancherla</title>
+</head>
+<body>
+    <a class="back-link" href="../index.html">&larr; Back to portfolio</a>
+
+    <article class="post">
+        <h1>Teaching a Network to Play Chess from Scratch(ish)</h1>
+        <p class="post-meta">November 2026 · <a href="https://github.com/sujen07/chess-rl">github.com/sujen07/chess-rl</a></p>
+
+        <p>My first chess AI was a depth-limited minimax player with a hand-written evaluation function.
+            It worked, but every bit of its "understanding" was something I had typed in myself.
+            I wanted to see how far I could get with the opposite approach: a neural network that learns
+            what a good position looks like, plus a search that uses that judgment, roughly the recipe
+            behind AlphaZero. This post walks through how <code>chess-rl</code> is built, what each training
+            run changed, and which ideas actually moved the needle.</p>
+
+        <h1>The setup</h1>
+        <p>The engine has two parts:</p>
+        <ul>
+            <li><strong>A policy/value network.</strong> It takes the board (with a few moves of history,
+                encoded as planes) and outputs a probability for every legal move (the policy) and a single
+                number for who is winning (the value). The final model is a ResNet with 128 channels and
+                10 residual blocks, plus squeeze-and-excitation (SE) layers.</li>
+            <li><strong>Monte Carlo Tree Search (MCTS).</strong> A PUCT search uses the policy to decide which
+                moves to explore and the value to score the positions it reaches, so it never needs to play a
+                game out to the end. The search runs in batches, so many leaf positions go through the GPU in
+                one call. It also uses bitboards for encoding and reuses the tree between moves.</li>
+        </ul>
+        <p>Training happens in two stages: a supervised warm start on human games, then self-play
+            reinforcement learning, where the search's output becomes the network's next training target.</p>
+
+        <h1>Stage 1: Learning from humans first</h1>
+        <p>Pure AlphaZero starts from random weights. That takes an enormous amount of compute, so I skipped the random phase by first training the network on Lichess games.
+            I converted a monthly Lichess PGN dump into packed training shards and trained the network to
+            predict the move the human played (policy) and the game result (value).</p>
+
+        <figure>
+            <img src="sl_se_loss_curve.png" alt="Supervised training loss curves over 4 epochs">
+            <figcaption>Supervised warm start (SE model): after 4 epochs, validation move accuracy reaches about 54%.</figcaption>
+        </figure>
+
+        <h2>Picking an architecture</h2>
+        <p>Before committing to a big run I did a small architecture sweep. Each model had about 1M parameters
+            and the same training budget. I also trained the baseline twice with different seeds so I would know
+            how much of a difference was just noise.</p>
+        <table>
+            <tr><th>Model</th><th>Params</th><th>Val move accuracy</th><th>vs baseline</th></tr>
+            <tr><td>ResNet 64ch × 6</td><td>1.04M</td><td>43.92%</td><td>—</td></tr>
+            <tr><td>ResNet, different seed</td><td>1.04M</td><td>43.68%</td><td>−0.24 pp (noise)</td></tr>
+            <tr><td>ResNet + SE</td><td>1.05M</td><td>44.27%</td><td>+0.35 pp</td></tr>
+            <tr><td>Transformer d128 × 4</td><td>1.09M</td><td>38.28%</td><td>−5.64 pp</td></tr>
+            <tr><td>Transformer + attention bias</td><td>1.16M</td><td>39.07%</td><td>−4.84 pp</td></tr>
+            <tr><td>ResNet + SE + 2 attention layers</td><td>0.97M</td><td>43.80%</td><td>−0.12 pp</td></tr>
+        </table>
+        <p>SE was the only change that beat the seed-noise band, so it went into the full-size model.
+            The pure transformers were about 5 points behind. At this size and budget, convolutions'
+            built-in sense of board geometry is hard to beat.</p>
+
+        <h1>Stage 2: Self-play</h1>
+        <p>In self-play, the engine plays itself. At every move, MCTS produces a better move distribution than
+            the raw policy, and the network is trained to match it. The game result becomes the value target.
+            Better network → better search → better targets, and so on.</p>
+        <p>Most of the engineering went into making that loop fast and stable:</p>
+        <ul>
+            <li><strong>Multiprocess self-play.</strong> One worker per CPU core plays games, and a coordinator
+                batches their positions for the GPU. A replay buffer decodes positions on the GPU so training
+                isn't bottlenecked on Python.</li>
+            <li><strong>Playout cap randomization.</strong> Only 25% of moves get a full 600-simulation search,
+                and only those become training samples. The rest use a cheap 80-simulation search just to keep
+                the game moving. This gets far more games per hour without making the targets worse.</li>
+            <li><strong>Resignation.</strong> Clearly lost games (value below −0.9 for three moves in a row) are
+                resigned, except for 10% that are played out so the engine still learns endings.</li>
+            <li><strong>A human-move anchor.</strong> A fraction of every training batch still comes from the
+                Lichess data. This keeps a young self-play run from drifting into strange openings.</li>
+        </ul>
+
+        <h2>The runs</h2>
+        <table>
+            <tr><th>Run</th><th>What changed</th></tr>
+            <tr><td>v4</td><td>First multiprocess self-play from the supervised net</td></tr>
+            <tr><td>v5</td><td>Fast batched MCTS, playout cap randomization, resignation, human-move mix</td></tr>
+            <tr><td>v6</td><td>v5 extended at a lower learning rate. A higher peak (1.5e-4) regressed by −122 Elo.</td></tr>
+            <tr><td>v7</td><td>Fresh run from the SE warm start with 600-simulation targets</td></tr>
+            <tr><td>v8</td><td>Gumbel-style completed-Q policy targets, higher LR, lighter human anchor (in progress)</td></tr>
+        </table>
+        <p>To compare versions I used head-to-head arena matches with color-swapped pairs and 95% confidence
+            intervals. Over 400 pairs, v7 beat the SE supervised model by <strong>+45 Elo [+25, +65]</strong>
+            and beat v6 by <strong>+47 Elo [+26, +68]</strong>. It is now the model behind the Lichess bot.</p>
+        <p>The v6 result was a useful lesson. Raising the learning rate when extending a finished run didn't
+            speed anything up. It undid progress. Self-play is a moving target, and a large step size will
+            happily overwrite what the network already learned.</p>
+
+        <h1>How strong is it?</h1>
+        <p>For an outside reference, I played the engine against Stockfish with its strength limited through
+            <code>UCI_Elo</code>, at 1 second per move for Stockfish and 20 games per level.</p>
+        <figure>
+            <img src="../chess_rl.png" alt="Bar chart of v5 and v7 scores against Stockfish at Elo 2200, 2500, 2800 and 3190">
+            <figcaption>Score against Elo-limited Stockfish. 20 games per level, so treat each bar as a rough estimate.</figcaption>
+        </figure>
+        <p>v7 scores 0.95 against the 2200 setting and 0.85 against 2500, and gets about 0.15 against Stockfish's
+            strongest limited setting. The v5/v7 crossover at 2800 is within the noise of 20 games, which is why
+            I rely on the arena (with confidence intervals) to choose between versions.</p>
+
+        <h1>A detour: editing the weights by hand</h1>
+        <p>One of the more unusual experiments was <em>weight-space programming</em>: instead of training, an
+            LLM reads the network's weights, finds a flaw, and writes a weight edit directly. It worked under a
+            strict budget of forward passes, with no gradients, no games and no search.</p>
+        <p>It found what looked like a real flaw. In trivially won endgames like king and queen vs king, the
+            value head had no sense of progress. It didn't care whether the losing king was in the center or
+            pinned to the edge, probably because self-play resigns those games before they're played out. So it
+            built a small "mop-up" circuit in 6 value-head units that were never active (0.33% of the model,
+            with the policy untouched). The circuit adds a bonus for pushing the lone king to the edge, and only
+            switches on in those endgames.</p>
+        <p>Inside the sandbox, the edit did exactly what it was supposed to. Then the held-out evaluation showed
+            no improvement at all: the original model already converted all 200 test endgames, and the arena was
+            a dead heat (+0 Elo, CI ±5). With 200 simulations, search finds those mates on its own, so the flat
+            value head was never actually a problem. My takeaway: <strong>judge a network's flaws by how it plays
+            with search, not by its raw outputs.</strong></p>
+
+        <h1>What I learned</h1>
+        <ul>
+            <li><strong>Warm starts are worth it on a small budget.</strong> Supervised pretraining gets the
+                network to sensible chess immediately, so self-play compute goes into refining instead of discovering
+                that queens are valuable.</li>
+            <li><strong>Measure noise before trusting a gain.</strong> The second baseline seed in the architecture
+                sweep and the arena confidence intervals saved me from chasing differences that weren't real.</li>
+            <li><strong>Throughput is the real hyperparameter.</strong> Batched MCTS, tree reuse and playout cap
+                randomization did more for strength than most of the knobs I tuned.</li>
+            <li><strong>Learning rate in RL is unforgiving.</strong> The −122 Elo regression in v6 came from a single setting.</li>
+        </ul>
+
+        <h1>What's next</h1>
+        <p>v8 tests whether the network is learning from search too slowly. In v7's replay buffer, the search
+            still disagreed with the policy's top move 37% of the time after 2.77M samples. v8 switches to
+            completed-Q policy targets (from Gumbel MuZero), which carry more information per position than raw
+            visit counts, and reduces the human-move mix from 0.3 to 0.05 so a higher learning rate can be used.</p>
+        <p>The code, configs for every run and the evaluation game records are all on
+            <a href="https://github.com/sujen07/chess-rl">GitHub</a>.</p>
+    </article>
+
+    <a class="back-link" href="../index.html">&larr; Back to portfolio</a>
+</body>
+</html>

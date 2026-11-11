@@ -70,6 +70,18 @@
     <h1>Notable Projects</h1>
     <div class="container">
         <div class="box">
+            <h2>Chess RL Engine</h2>
+            <h3>Reinforcement Learning (AlphaZero-style, MCTS)</h3>
+            <img src="chess_rl.png" alt="chess-rl scores against Elo-limited Stockfish" width="400px" height="250px">
+            <div class="description">
+                <p>Built an AlphaZero-style chess engine in PyTorch: a residual policy/value network with
+                    squeeze-and-excitation, warm-started on Lichess games and then improved through self-play
+                    with a batched MCTS. It scores 0.85 against Stockfish limited to 2500 Elo and plays on Lichess as a bot.</p>
+                <a href="https://github.com/sujen07/chess-rl">Full Project</a> ·
+                <a href="blog/chess-rl.html">Read the blog post</a>
+            </div>
+        </div>
+        <div class="box">
             <h2>AI Calendar Assistant</h2>
             <h3>Full Stack Agentic App</h3>
             <img src="calendar.png" alt="calendar saas" width="400px" height="600">
@@ -134,6 +146,14 @@
             </div>
         </div>
     </div>
+    <h1>Blog</h1>
+    <div class="post-list">
+        <a class="post-link" href="blog/chess-rl.html">
+            <h2>Teaching a Network to Play Chess from Scratch(ish)</h2>
+            <h3>Supervised warm start, self-play RL, and what moved the needle</h3>
+        </a>
+    </div>
+
     <h1>Technical Skills</h1>
     <p>Python, R, SQL, Java, Node.js, HTML, CSS, JavaScript, Linux Bash, Regression, Decision Trees, SVM, Neural Networks, Ensemble
         Methods, k-NN, Naive Bayes, Decision Forests, Scikit-learn, CNNs, RNNs, TensorFlow, Keras, PyTorch, Hypothesis Testing, Probability,
